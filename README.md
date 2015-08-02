@@ -1,3 +1,3 @@
 # supacollida
 
-version-controlled supercollider shits.
+supercollider experiments/explorations/compositions
