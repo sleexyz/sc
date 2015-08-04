@@ -13,13 +13,20 @@
 // Super sick looper
 
 b = Buffer.read(s, Platform.resourceDir +/+ "sounds/a11wlk01.wav");
+
+(
+{
+	BufRd.ar(1, b, Phasor.ar(0, 1, 0, BufFrames.kr(b)))!2;
+}.play
+)
+
 c = Buffer.alloc(s, 44100);
 
 (
 {
 	var in, mix, rate, trig;
 	rate = MouseY.kr(0, 1);
-	in = 	BufRd.ar(1, b, Phasor.ar(0, rate, 0, BufFrames.kr(b)));
+	in = 	BufRd.a.r(1, b, Phasor.ar(0, rate, 0, BufFrames.kr(b)));
 	trig = Impulse.ar(10);
 
 	BufWr.ar(in, c, Phasor.ar(trig, 1, 0, BufFrames.kr(c), MouseX.kr(0, 1) * BufFrames.kr(c)),1);
@@ -53,6 +60,7 @@ c = Buffer.alloc(s, 44100  * (60/80)); //80bpm/160bpm
 
 }.scope
 )
+
 // Make a buf write duplicator
 
 
