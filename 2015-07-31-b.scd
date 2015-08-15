@@ -1,5 +1,6 @@
 
 
+
 // Buffer Exploration:
 
 
@@ -55,8 +56,6 @@ c = Buffer.alloc(s, 44100  * (60/80)); //80bpm/160bpm
 	BufWr.ar(in, c, Phasor.ar(trig, 1, 0, BufFrames.kr(c), MouseX.kr(0, 1) * BufFrames.kr(c)),1);
 
 	mix = BufRd.ar(1, c, Phasor.ar(0, BufRateScale.kr(c), 0, BufFrames.kr(c)))!2;
-
-
 
 }.scope
 )
