@@ -7,33 +7,36 @@ MIDIIn.connectAll;
 (
 SynthDef(\foo, {|note=60, rq=0.001, gate=0, dsrate=2000, vol=1|
 	var env, mix;
-	env = EnvGen.ar(Env.adsr, gate, 1, 0, 1);
+	env = EnvGen.ar(Env.adsr, gate, Latch.kr(gate, gate), 0, 1);
 
-	mix = SinOsc.ar(note.midicps, 0, env);
-
-	// mix = RHPF.ar(PinkNoise.ar(0.1), note.midicps, rq, env);
-	// mix = Latch.ar(mix.tanh, Impulse.ar(dsrate));
-	// mix = LPF.ar(mix, dsrate);
-	// mix = mix*vol;
+	mix = RHPF.ar(PinkNoise.ar(0.5), note.midicps, rq, env);
+	mix = Latch.ar(mix, LFPulse.ar(dsrate));
+	mix = LPF.ar(mix, dsrate);
+	mix = mix*vol;
 
 	Out.ar(0, mix!2);
 }).add
 )
-
 
 (
 ~rq = Bus.control(s);
 ~dsrate = Bus.control(s);
 ~vol = Bus.control(s);
 
+~rq.set(0.001);
+~dsrate.set(2000);
+~vol.set(1);
 
-~keys = Array.fill(64, {|i|
-	Synth(\foo, [
-		\note, i,
-		\rq, ~rq.index,
-		\dsrate, ~dsrate.index,
-		\vol, ~vol.index
+
+~keys = Array.fill(128, {|i|
+	var synth = Synth(\foo, [
+		\note, i
 	]);
+	synth.map(\rq, ~rq,
+		\dsrate, ~dsrate,
+		\vol, ~vol
+	);
+	synth;
 });
 
 MIDIdef.cc(\test1, {|val, chan|
@@ -62,4 +65,5 @@ MIDIdef.noteOff(\test3, {|val, chan|
 
 ~keys[0]
 ~keys[60].set(\gate, 0);
+s.dumpOSC(1);
 s.dumpOSC(0);
