@@ -1,3 +1,3 @@
 # supacollida
 
-supercollider experiments/explorations/compositions
+supercollider experiments/explorations/compositions/instruments
