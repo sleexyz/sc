@@ -1,93 +1,110 @@
-//Boilerplate code for basic live coding functionality
-
 (
-//increase number of buffers the server has access to for loading samples
-s.options.numBuffers = 1024 * 16;
-//increase the memory available to the server
-s.options.memSize = 8192 * 64;
-//boot the server
-s.boot;
-//display the oscilloscope
-s.scope;
-//start proxyspace
+b = Dictionary.new();
+b.add(\kick -> Buffer.read(s, thisProcess.nowExecutingPath.dirname ++ "/samples/kick_wavetable_01.wav"));
+b.add(\break -> Buffer.read(s, thisProcess.nowExecutingPath.dirname ++ "/samples/Ricochet Break.wav"));
 p=ProxySpace.push(s);
 p.fadeTime = 2;
-//start tempo clock
 p.makeTempoClock;
-//give proxyspace a tempo
 p.clock.tempo = 160/60;
 p.quant = 1.0;
 
 ~out.play;
-~baby = Buffer.read(s, "/home/slee2/.BitwigStudio/installed-packages/1.0/samples/Bitwig/Percussion/Vocal Drums and Percussion/Vocal kick/Vocal Drum-Percussion Kick 04.wav");
-
 )
+
+
+// TODO try proxyspace instead of In.kr, or at least a helper function
+(
+~out = {
+	var x = 0;
+	x = SinOsc.ar(110*In.kr(c[0]) + 440);
+	x!2;
+};
+)
+
+(
+c = Array.fill(16, {
+	var bus = Bus.control(s, 1);
+	bus
+});
+d = Array.fill(16, {|i|
+	{|value = 0| Out.kr(c[i], [value]) }.play;
+})
+)
+
+MIDIClient.init;
+MIDIIn.connectAll;
+// looper control
+(
+MIDIdef.cc(\test1, {|val, chan|
+	var v = val.linlin(0, 127, 0, 1);
+	d[chan].set(\value, v);
+});
+)
+
+
 
 
 (
 ~out = {
-
-	x = Mix.ar([
-		~out1.ar(2).tanh,
-		~out2.ar(2).tanh
-
+	x = Mix.new([
+		// ~out1.ar(2),
+		~out2.ar(2),
+		// ~out3.ar(2)
 	]);
-
-	//x = LinSelectX.ar(0.5,[x,PitchShift.ar(in: x, windowSize: 160/60, pitchRatio: 4, timeDispersion: 4)]);
-	x = FreeVerb2.ar(in: x[0], in2: x[1], x: 0.2, room: 0.9, damp: 1);
+	//x = x + DelayN.ar(x, 160/60 * 4, LFSaw.ar(LFSaw.ar(160/60/32).linexp(-1, 1, 0.25, 160/60)).linexp(-1, 1, 0.001, 160/60*4)/4, 1).tanh; //TODO: modulate weirdness
+    x = x.tanh;
+	x = FreeVerb2.ar(in: x[0], in2: x[1], mix: 0.2, room: 0.2, damp: 1);
 	x = BPeakEQ.ar(in: x, freq: 60, rq: 1, db: 5);
-    //x = x * 0.5 + DelayN.ar(x, 160/60 * 2, 160/60 + LFSaw.ar(160/60 * LFSaw.ar(0.1, 0).linexp(-1, 1, 1, 16)), 1); //nice sound
 
     //x = Normalizer.ar(in: x, level: 1, dur: 2);
 	x;
 };
 
+
+
+//dumb
 ~out1 = {
-	var x;
+	var x = 0;
+	var phase = 0;
+	phase = LFSaw.ar(160/60/4);
     x = BufRd.ar(
-		numChannels: 1,
-		bufnum: ~baby,
-		phase: ~phase.ar * BufSamples.kr(~baby);
+		numChannels: 2,
+		bufnum: b[\kick],
+		phase: phase * BufSamples.kr(b[\kick])/16;
 	);
-    x = CombC.ar(x, delaytime: Decay.ar(in: Impulse.ar(160/60 * 4), decayTime: 60/160/16).linlin(0, 1, 0.01, 10), decaytime: -1);
+    x = CombC.ar(x, delaytime: Decay.ar(in: Impulse.ar(160/60*16), decayTime: 60/160/16).linlin(0, 1, 0.01, 16), decaytime: -0.125);
+	x = DelayN.ar(x, 1, LFPar.ar(160/60).linexp(-1, 1, 0.1, 16)/16); //laser flanger
 
-
-    x = BPeakEQ.ar(in: x, freq: 60, rq: 1, db: 10);
-
-	x = x ! 2;
-	x = Compander.ar(x, ~out2.ar(2), thresh: 0.1, slopeBelow: 1, slopeAbove: 0.25, clampTime: 0.01, relaxTime: 0.01);
-
-    x = x *0.9;
-};
-
-~phase = {
-	var x;
-	x = LFSaw.ar(160/60/1).linlin(-1, 1, 0.1, 1);
-	x = x + LFSaw.ar(~spirit.ar).linlin(-1, 1, 0, 1);
-	x;
+    x = x.tanh;
 };
 
 
 ~out2 = {
-	var x;
-	var seq = Dseq([0, 14, 19, 22] + 48);
-	var pulse = Impulse.ar(160/60 * 4);
-	x = LFTri.ar(Demand.ar(pulse, 0, Dseq(seq, inf)).midicps).cubed;
-	x = x + LFTri.ar(Demand.ar(pulse + DelayN.ar(pulse, 1, 160/60/2), 0, Dseq(seq + 7, inf)).midicps).cubed;
-	x = x * Decay.ar(pulse, 160/60/4);
-	x = x + DelayN.ar(x, 160/60 * 2, 160/60 + LFSaw.ar(160/60 * LFSaw.ar(0.1, 0).linexp(-1, 1, 1, 16)), 1); //nice sound
-	//x = LPF.ar(x, 4000, 1);
-	//x = PitchShift.ar(x, windowSize: 160/60, pitchRatio: 2/3, timeDispersion: 0, mul: 2);
+	var x = 0;
+	var n = 4;
+	x = Mix.fill(n, {|i|
+		var pulse = Impulse.ar(160/60, i/n);
+		var x = 0;
+		x = x + LFPar.ar((36 + (2*i/n)).midicps,0, 2).cubed.cubed;
+		x = x * Decay.ar(pulse, 0.075); // TODO: modulate gating
+	})/n;
+	x = x.softclip;
 	x = x ! 2;
-    x = x * 0.5;
+    x = x*0.9;
 	x;
 };
 
-~spirit = {
-	var x;
-	x = SinOsc.ar(0.1).linexp(-1, 1, 0.001, 10);
+~out3 = {
+	var x = [0, 0];
+	var n = 2;
+	var phase = LFSaw.ar(1/12);
+	//var phase = Select.ar(LFSaw.ar(160/60/1).linlin(-1, 1, 0, n), Array.fill(n, {|i| LFSaw.ar(1/12, i/n)}));
+	phase = phase - (LFPulse.ar(160/60*2).linlin(-1, 1, 0, 1)/4);
+	// phase = phase - (LFSaw.ar(1/12).round(3/8) * LFPulse.ar(160/60).linlin(-1, 1, 0, 1));
+	x = BufRd.ar(2, b[\break], phase * BufSamples.kr(b[\break]));
+	x = x + DelayN.ar(x, 0.2, LFSaw.ar(160/60/2).linlin(-1, 1, 0, 0.001)); //laser flanger
+	// x = HPF.ar(x, 2000);
+	x = x;
 	x;
-}
+};
 )
-
-~phase.scope;
