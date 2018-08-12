@@ -80,62 +80,69 @@ MIDIdef.noteOff(\noteOff, {|val, pitch, chan|
 )
 (
 SynthDef(\chan0, {|freq = 440, gate = 1|
-	var dustDensity = ~cc1.kr.linexp(0, 1, 1, 100);
 	var decayTime = ~cc2.kr.linexp(0, 1, 0.1, 100);
-	var detune = ~cc0.kr*7;
+	var detune = ~cc0.kr*24;
 
 
 	var x = 0;
 	var pulse = gate;
-	var combTime = 1000/freq;
-	//freq = (freq.cpsmidi + detune).midicps/2;
-	pulse = EnvGen.kr(Env.adsr(0.01, 0.3, 0.2, 1, 1, -4), pulse, doneAction: 2);
-	x = x + LFPar.ar(freq, pi.rand, 1).cubed.cubed;
+	var combTime = 1/freq;
+	freq = (freq.cpsmidi + detune).midicps/2;
+	pulse = EnvGen.kr(Env.adsr(60/160*2, 60/160*8, 0.1, 60/160*8), pulse, doneAction: 2);
+	x = PinkNoise.ar(1);
+	x = HPF.ar(x, freq, 10);
 	x = x * pulse;
-	x = x/4 + CombC.ar(x, combTime, delaytime: Decay.kr(in: Decay.kr(Dust2.kr(dustDensity), 0.1), decayTime: freq.reciprocal).linexp(0, 1, 0.1, 1)* combTime, decaytime: 1);
-	x = x/8;
+	x = CombC.ar(x, combTime, delaytime: Decay.kr(in: pulse, decayTime: freq.reciprocal).linexp(0, 1, 0.001, 1)* combTime, decaytime: -0.5);
+	x = x/16;
 	x = x;
-	x = x.softclip;
+	x = x + CombC.ar(x, delaytime: LFSaw.ar(160/60*4).linexp(-1, 1, 0.01, 1)/freq, decaytime: -1)/16;
+    x = x.softclip;
 	Out.ar(c[0], x! 2);
 }).add;
 
 SynthDef(\chan1,  {|freq = 440, gate = 1|
-	var rate = ~cc4.kr.linexp(0, 1, 0.5, 8);
+	var rate = ~cc4.kr.linexp(0, 1, 0.5, 16);
 
 	var x = 0;
 	var pulse = 0;
 	var phase = 0;
-	freq = (freq.cpsmidi + Rand.new(0, 2)).midicps;
-	pulse = EnvGen.ar(Env.linen(freq.reciprocal*2000, 0, 0), gate, doneAction: 2);
+	freq = (freq.cpsmidi + Rand.new(0, 1)).midicps;
+	pulse = EnvGen.ar(Env.linen(freq.reciprocal*200, 0, 0), gate, doneAction: 0);
 	phase = pulse.linlin(0, 1, 0, BufFrames.ir(b[\kick])); //original duration
+
 	x = BufRd.ar(
 		numChannels: 2,
 		bufnum: b[\kick],
 		phase: phase,
 	);
-	x = x + CombC.ar(x, delaytime: LFSaw.ar(160/60*8).linexp(0, 1, 0.01, rate)/freq, decaytime: -0.25) / 2;
-	x = BPeakEQ.ar(in: x, freq: freq, rq: 10, db: 10);
-	// x = x + DelayN.ar(x, 1, 1);
-	x = x + DelayN.ar(x, 1, 1/4 * LFSaw.ar(160/60*4));
-	// x = x + DelayN.ar(x, 1, 1/2);
-	x = x/4;
+
+	x = x/2 + CombC.ar(x, 1,delaytime: LFSaw.ar(160/60*16).linlin(0, 1, 0, rate)/freq, decaytime: -100)/8;
+
+	x = BPeakEQ.ar(in: x, freq: 40, rq: 1, db: 26);
+	x = x * EnvGen.ar(Env.perc, gate, doneAction: 2);
 
 
-
-	x = x/4;
 	x = x.softclip;
 	Out.ar(c[1], x!2);
 }).add;
 
+// TODO: add panning;
+
 
 ~out = {
+	var chan0 = In.ar(c[0], 2);
+	var chan1 = In.ar(c[1], 2);
+	var mix = 0.9;
+	var chan0_ = Compander.ar(chan0, chan1, mix, 1, 0, 0.01, 0.1);
+	var chan1_ = Compander.ar(chan1, chan0, 1 - mix, 1, 0, 0.01, 0.1);
+
 	x = Mix.new([
-		In.ar(c[0], 2),
-		//In.ar(c[1], 2),
+		chan0_,
+		chan1_
 		// ~out3.ar(2)
 	]).softclip;
-	// x = x + DelayN.ar(x, 160/60 * 4, LFSaw.ar(LFSaw.ar(160/60/32).linexp(-1, 1, 0.25, 160/60)).linexp(-1, 1, 0.001, 160/60*4)/4, 1).tanh; //TODO: modulate weirdness
-	//x = FreeVerb2.ar(in: x[0], in2: x[1], mix: 0.2, room: 0.9, damp: 1);
+	//x = x + DelayN.ar(x, 160/60 * 4, LFSaw.ar(LFSaw.ar(160/60/32).linexp(-1, 1, 0.25, 160/60)).linexp(-1, 1, 0.001, 160/60*4)/4, 1).tanh; //TODO: modulate weirdness
+	//x = FreeVerb2.ar(in: x[0], in2: x[1], mix: 0.1, room: 0.9, damp: 1);
 	x = BPeakEQ.ar(in: x, freq: 60, rq: 1, db: 5);
     //x = Normalizer.ar(in: x, level: 0.8, dur: 2);
 	x;
@@ -168,3 +175,6 @@ SynthDef(\chan1,  {|freq = 440, gate = 1|
 )
 
 ~out.scope;
+
+
+100.softclip;
