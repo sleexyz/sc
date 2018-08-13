@@ -1,31 +1,9 @@
-
-(
-o = Server.local.options;
-o.maxNodes = 2**16;
-o.memSize = 2 ** 21;
-o.numOutputBusChannels = 16;
-)
 (
 b = Dictionary.new();
 b.add(\kick -> Buffer.read(s, thisProcess.nowExecutingPath.dirname ++ "/samples/kick_wavetable_01.wav"));
 b.add(\break -> Buffer.read(s, thisProcess.nowExecutingPath.dirname ++ "/samples/Ricochet Break.wav"));
-)
-(
-p=ProxySpace.push(s);
-p.fadeTime = 2;
-p.makeTempoClock;
-p.clock.tempo = 140/60;
-p.quant = 1.0;
-
-c = Array.fill(16, { Bus.audio(s, 2); });
-
-MIDIClient.init;
-MIDIIn.connectAll;
-)
 
 
-
-(
 Routine {
 	16.do {|chan|
 		("Initializing cc" ++ chan).postln;
@@ -164,10 +142,10 @@ SynthDef(\chan4, {|freq = 440, gate = 1, vel = 0.75|
 		phase: phase,
 	);
 	x = BPeakEQ.ar(in: x, freq: 40, rq: 10, db: 20);
-	x = BPeakEQ.ar(in: x, freq: freq, rq: 100, db: 60);
+	x = BPeakEQ.ar(in: x, freq: freq, rq: 10, db: 20);
 	x = x * EnvGen.ar(Env.perc(0.01, 1), gate, vel,  doneAction: 2);
 
-	x = x + AllpassN.ar(x, 0.2, LFSaw.ar(freq).linlin(-1, 1, 0, 0.1), -1);
+	x = x + DelayN.ar(x, 1, LFSaw.ar(freq/3).linlin(-1, 1, 0, 0.2).sqrt.sqrt, -10);
 	//x = BPeakEQ.ar(in: x, freq: freq, rq: 10, db: 30);
 
 
