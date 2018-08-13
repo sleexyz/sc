@@ -142,11 +142,11 @@ SynthDef(\chan4, {|freq = 440, gate = 1, vel = 0.75|
 		phase: phase,
 	);
 	x = BPeakEQ.ar(in: x, freq: 40, rq: 10, db: 20);
-	x = BPeakEQ.ar(in: x, freq: freq, rq: 10, db: 20);
-	x = x * EnvGen.ar(Env.perc(0.01, 1), gate, vel,  doneAction: 2);
+	x = BPeakEQ.ar(in: x, freq: freq, rq: 100, db: 60);
+	x = x * EnvGen.ar(Env.perc(0.01, 1s), gate, vel,  doneAction: 2);
 
-	x = x + DelayN.ar(x, 1, LFSaw.ar(freq/3).linlin(-1, 1, 0, 0.2).sqrt.sqrt, -10);
-	//x = BPeakEQ.ar(in: x, freq: freq, rq: 10, db: 30);
+	x = x + DelayN.ar(x, 1, LFSaw.ar(freq/2).linlin(-1, 1, 0, 1).sqrt, 0.25);
+	x = BPeakEQ.ar(in: x, freq: freq, rq: 10, db: 5);
 
 
 
