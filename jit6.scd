@@ -54,21 +54,16 @@ MIDIdef.noteOff(\noteOff, {|val, pitch, chan|
 
 
 SynthDef(\chan0, {|freq = 440, gate = 1, vel = 0.75|
-	var decayTime = ~cc2.kr.linexp(0, 1, 0.1, 100);
-	var detune = ~cc0.kr*24;
-
-
+	var combMul = ~cc1.kr;
 	var x = 0;
 	var pulse = gate;
-	var combTime = 1/freq;
-	freq = (freq.cpsmidi + detune).midicps/2;
+	var gate2 = LFSaw.ar(140/60*4);
 	pulse = EnvGen.kr(Env.adsr(0.1, 0.1, 0.5, 1), pulse, vel, doneAction: 2);
 	x = PinkNoise.ar(1);
 	x = BPeakEQ.ar(x, freq, 10, 40);
 	x = x * pulse;
-	x = CombC.ar(x, combTime, delaytime: Decay2.kr(in: gate, attackTime: 0.1, decayTime: 10).linexp(0, 1, 0.001, 1)* combTime, decaytime: -1);
-	//x = x/16;
-	x = x + CombC.ar(x, delaytime: LFSaw.ar(140/60*4).sqrt.sqrt.linexp(-1, 1, 1, 0.1)/freq, decaytime: -1, mul: 0.25);
+	x = CombC.ar(x, freq.reciprocal, delaytime: Decay2.kr(in: gate, attackTime: 0.1, decayTime: 10).linexp(0, 1, 0.001, 1)/freq, decaytime: -1);
+	x = x + CombC.ar(x, delaytime: gate2.linlin(-1, 1, 1, 0.1)/freq, decaytime: -1, mul: combMul.linexp(0, 1, 0.01, 1));
 
 	Out.ar(0, x! 2);
 }).add;
@@ -79,8 +74,7 @@ SynthDef(\chan1,  {|freq = 440, gate = 1, vel = 0.75|
 	var x = 0;
 	var pulse = 0;
 	var phase = 0;
-	var alienness = ~cc5.kr;
-	freq = (freq.cpsmidi + Rand.new(0, 1)).midicps;
+  	freq = (freq.cpsmidi + Rand.new(0, 1)).midicps;
 	pulse = EnvGen.ar(Env.linen(freq.reciprocal*200, 0, 0), gate, doneAction: 0);
 	phase = pulse.linlin(0, 1, 0, BufFrames.ir(b[\kick])); //original duration
 
@@ -96,7 +90,7 @@ SynthDef(\chan1,  {|freq = 440, gate = 1, vel = 0.75|
 
 	x = BPeakEQ.ar(in: x, freq: freq, rq: 1, db: 5);
 
-	x = x * EnvGen.ar(Env.perc(0.1, alienness.linexp(-1, 1, 0.1, 10)), gate, vel,  doneAction: 2);
+	x = x * EnvGen.ar(Env.perc(0.1, 3), gate, vel,  doneAction: 2);
 
 	Out.ar(2, x!2);
 }).add;
@@ -123,7 +117,7 @@ SynthDef(\chan3, {|freq = 440, gate = 1, vel = 0.75|
 	vel = vel * Rand.new(0, 1);
 	x = LFPar.ar(freq);
 	x = x * pulse;
-	x = x/8 + AllpassC.ar(x, 1, LFSaw.ar(2**(IRand.new(0, 2)/2)*2).linlin(-1, 1, 0, 1), 1);
+	x = x/2 + AllpassC.ar(x, 1, LFSaw.ar(2**(IRand.new(0, 8)/2)*2).linlin(-1, 1, 0, 1), 1);
 	Out.ar(6, x!2);
 }).add;
 
